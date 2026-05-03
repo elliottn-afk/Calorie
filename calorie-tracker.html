@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Calorie Log">
+<title>Calorie Log</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --text: #e8e2d9;
+    --muted: #6b6560;
+    --faint: #3a3530;
+    --dim: #4a4540;
+    --green: #4ade80;
+    --yellow: #facc15;
+    --red: #f87171;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+  
+  #app { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: calc(32px + var(--safe-top)) 16px calc(100px + var(--safe-bottom)); max-width: 520px; margin: 0 auto; }
+
+  .header { text-align: center; margin-bottom: 24px; }
+  .header-eyebrow { font-size: 10px; letter-spacing: 6px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; font-family: 'DM Sans', sans-serif; }
+  .header-title { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 300; letter-spacing: -1px; color: var(--text); }
+
+  .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px 28px; width: 100%; margin-bottom: 16px; }
+  .summary-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; }
+  .summary-label { font-size: 10px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 4px; }
+  .summary-big { font-family: 'Playfair Display', serif; font-size: 40px; font-weight: 300; line-height: 1; }
+  .summary-unit { font-size: 14px; color: var(--muted); margin-left: 4px; }
+  .summary-remaining { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 300; }
+  .progress-track { background: var(--border); border-radius: 99px; height: 5px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease, background 0.4s ease; }
+  .progress-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--dim); }
+
+  .tabs { display: flex; width: 100%; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .tab { flex: 1; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--dim); font-size: 11px; font-family: 'DM Sans', sans-serif; letter-spacing: 2px; text-transform: uppercase; padding: 12px 0; cursor: pointer; transition: all 0.2s ease; }
+  .tab.active { border-bottom-color: var(--text); color: var(--text); }
+
+  .panel { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; animation: fadeUp 0.3s ease forwards; }
+  .entry-source { font-size: 11px; color: var(--dim); margin-bottom: 10px; font-style: italic; }
+  .entry-items { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .entry-item { display: flex; justify-content: space-between; align-items: baseline; }
+  .entry-item-name { font-size: 14px; color: #c8c2b9; }
+  .entry-item-note { font-size: 11px; color: #5a5550; margin-left: 8px; }
+  .entry-item-cals { font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .entry-footer { border-top: 1px solid var(--border); padding-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .entry-msg { font-size: 12px; color: var(--muted); font-style: italic; flex: 1; }
+  .entry-total { font-size: 16px; color: var(--text); font-weight: 500; white-space: nowrap; }
+
+  .empty { text-align: center; color: var(--faint); font-size: 14px; padding: 40px 0; font-style: italic; }
+  .loading-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; color: var(--dim); font-style: italic; font-size: 14px; animation: pulse 1.4s ease infinite; }
+  .error-card { background: var(--card); border: 1px solid #3a2020; border-radius: 14px; padding: 14px 18px; color: var(--red); font-size: 13px; }
+
+  /* History */
+  .stats-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; margin-bottom: 4px; }
+  .stats-label { font-size: 10px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 16px; }
+  .stats-row { display: flex; justify-content: space-between; gap: 12px; }
+  .stat { text-align: center; }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 300; }
+  .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .chart { display: flex; align-items: flex-end; gap: 3px; height: 48px; margin-top: 20px; }
+  .chart-bar { flex: 1; border-radius: 2px 2px 0 0; min-width: 4px; transition: height 0.4s ease; }
+  .chart-axis { border-top: 1px solid var(--border); margin-top: 2px; }
+  .chart-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px; color: var(--dim); }
+
+  details { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  details > summary { padding: 14px 18px; cursor: pointer; display: flex; align-items: center; gap: 12px; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] > summary { border-bottom: 1px solid var(--border); }
+  .day-name { flex: 1; font-size: 14px; color: #c8c2b9; }
+  .spark { flex: 1; background: var(--border); border-radius: 3px; height: 5px; overflow: hidden; }
+  .spark-fill { height: 100%; border-radius: 3px; }
+  .day-total { font-size: 14px; font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; }
+  .day-entries { padding: 12px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .day-entry { padding-bottom: 8px; border-bottom: 1px solid #1e1e1e; }
+  .day-entry:last-child { border-bottom: none; padding-bottom: 0; }
+  .day-entry-src { font-size: 11px; color: var(--dim); margin-bottom: 4px; font-style: italic; }
+  .day-entry-item { display: flex; justify-content: space-between; font-size: 13px; color: #c8c2b9; }
+  .day-entry-item span:last-child { color: var(--text); }
+
+  /* Library */
+  .lib-hint { font-size: 13px; color: var(--muted); margin-bottom: 4px; font-style: italic; line-height: 1.6; }
+  .lib-add-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+  .lib-add-label { font-size: 10px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; }
+  .lib-add-row { display: flex; gap: 10px; align-items: center; }
+  .lib-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .lib-item-name { flex: 1; font-size: 14px; color: #c8c2b9; }
+  .lib-item-cals { font-size: 14px; color: var(--text); }
+  .lib-actions { display: flex; gap: 8px; align-items: center; }
+
+  input, textarea { font-family: 'DM Sans', sans-serif; }
+  .input { background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 14px; outline: none; }
+  .input::placeholder { color: var(--faint); }
+  .input:focus { border-color: var(--dim); }
+  input[type=number]::-webkit-inner-spin-button { opacity: 0.3; }
+
+  .btn { border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
+  .btn-primary { background: var(--text); color: #0f0f0f; }
+  .btn-primary:disabled { background: var(--border); color: var(--dim); cursor: default; }
+  .btn-ghost { background: transparent; color: var(--muted); font-size: 12px; padding: 4px 6px; }
+  .btn-ghost:hover { color: var(--text); }
+  .btn-danger { background: transparent; color: var(--dim); font-size: 18px; padding: 4px; line-height: 1; }
+  .btn-save { background: var(--green); color: #0f0f0f; border-radius: 6px; padding: 5px 10px; font-size: 12px; }
+
+  /* Input bar */
+  .input-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 16px calc(12px + var(--safe-bottom)); background: linear-gradient(transparent, var(--bg) 30%); display: flex; justify-content: center; }
+  .input-inner { display: flex; gap: 10px; width: 100%; max-width: 488px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; align-items: flex-end; }
+  .input-ta { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 15px; font-family: 'DM Sans', sans-serif; resize: none; line-height: 1.5; max-height: 100px; overflow-y: auto; }
+  .input-ta::placeholder { color: var(--faint); }
+  .btn-log { background: var(--text); color: #0f0f0f; border: none; border-radius: 10px; padding: 8px 16px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
+  .btn-log:disabled { background: var(--border); color: var(--dim); cursor: default; }
+  .btn-clear { background: transparent; color: var(--dim); border: none; font-size: 12px; cursor: pointer; padding: 8px 4px; font-family: 'DM Sans', sans-serif; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-eyebrow">Daily</div>
+    <h1 class="header-title">Calorie Log</h1>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-row">
+      <div>
+        <div class="summary-label">Consumed</div>
+        <div class="summary-big" id="totalDisplay">0<span class="summary-unit">kcal</span></div>
+      </div>
+      <div style="text-align:right">
+        <div class="summary-label">Remaining</div>
+        <div class="summary-remaining" id="remainingDisplay">2,000</div>
+      </div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressBar" style="width:0%"></div></div>
+    <div class="progress-labels"><span>0</span><span>Goal: 2,000 kcal</span></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('log')">Log</button>
+    <button class="tab" onclick="switchTab('history')">History</button>
+    <button class="tab" id="libTab" onclick="switchTab('library')">My Foods</button>
+  </div>
+
+  <!-- LOG PANEL -->
+  <div class="panel" id="panel-log">
+    <div class="empty" id="logEmpty">Tell me what you've eaten today…</div>
+    <div id="logEntries"></div>
+    <div id="loadingCard" class="loading-card" style="display:none">Estimating calories…</div>
+    <div id="errorCard" class="error-card" style="display:none"></div>
+    <div id="logBottom"></div>
+  </div>
+
+  <!-- HISTORY PANEL -->
+  <div class="panel" id="panel-history" style="display:none">
+    <div id="historyContent"></div>
+  </div>
+
+  <!-- LIBRARY PANEL -->
+  <div class="panel" id="panel-library" style="display:none">
+    <p class="lib-hint">Save foods you eat regularly with your own calorie values. These always override AI estimates.</p>
+    <div class="lib-add-card">
+      <div class="lib-add-label">Add Food</div>
+      <div class="lib-add-row">
+        <input class="input" id="libName" placeholder="Food name" style="flex:2" onkeydown="if(event.key==='Enter')addToLibrary()">
+        <input class="input" id="libCals" placeholder="kcal" type="number" min="0" style="flex:1" onkeydown="if(event.key==='Enter')addToLibrary()">
+        <button class="btn btn-primary" id="libAddBtn" onclick="addToLibrary()" disabled>Add</button>
+      </div>
+    </div>
+    <div id="libraryList"></div>
+  </div>
+</div>
+
+<!-- INPUT BAR -->
+<div class="input-bar" id="inputBar">
+  <div class="input-inner">
+    <textarea class="input-ta" id="foodInput" placeholder="e.g. two eggs on toast with a coffee…" rows="1" oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+    <button class="btn-log" id="logBtn" onclick="handleSubmit()" disabled>Log it</button>
+    <button class="btn-clear" id="clearBtn" onclick="clearToday()" style="display:none">Clear</button>
+  </div>
+</div>
+
+<script>
+const GOAL = 2000;
+const API_KEY = ""; // Leave blank — handled by Claude's API proxy
+let todayLog = [];
+let library = [];
+let currentView = "log";
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + "T12:00:00");
+  const today = todayKey();
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+  const yKey = yesterday.toISOString().slice(0,10);
+  if (dateStr === today) return "Today";
+  if (dateStr === yKey) return "Yesterday";
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+}
+
+// ── Storage ──
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+function load(key) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } }
+
+function getAllDayKeys() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith("cal-log:")) keys.push(k.replace("cal-log:", ""));
+  }
+  return keys.sort((a, b) => b.localeCompare(a));
+}
+
+// ── Init ──
+function init() {
+  todayLog = load("cal-log:" + todayKey()) || [];
+  library = load("cal-library") || [];
+  renderLog();
+  renderSummary();
+  renderLibrary();
+  document.getElementById("foodInput").addEventListener("input", () => {
+    document.getElementById("logBtn").disabled = !document.getElementById("foodInput").value.trim();
+  });
+  document.getElementById("libName").addEventListener("input", updateLibAddBtn);
+  document.getElementById("libCals").addEventListener("input", updateLibAddBtn);
+}
+
+function updateLibAddBtn() {
+  const n = document.getElementById("libName").value.trim();
+  const c = document.getElementById("libCals").value;
+  document.getElementById("libAddBtn").disabled = !n || !c;
+}
+
+// ── Summary ──
+function renderSummary() {
+  const total = todayLog.reduce((s, e) => s + e.total, 0);
+  const rem = GOAL - total;
+  const pct = Math.min((total / GOAL) * 100, 100);
+  const color = pct < 70 ? "var(--green)" : pct < 90 ? "var(--yellow)" : "var(--red)";
+
+  document.getElementById("totalDisplay").innerHTML = `${total.toLocaleString()}<span class="summary-unit">kcal</span>`;
+  document.getElementById("totalDisplay").style.color = color;
+  document.getElementById("remainingDisplay").textContent = rem >= 0 ? rem.toLocaleString() : `+${Math.abs(rem).toLocaleString()}`;
+  document.getElementById("remainingDisplay").style.color = rem >= 0 ? "var(--text)" : "var(--red)";
+  document.getElementById("progressBar").style.width = pct + "%";
+  document.getElementById("progressBar").style.background = color;
+  document.getElementById("clearBtn").style.display = todayLog.length > 0 ? "" : "none";
+}
+
+// ── Log ──
+function renderLog() {
+  const empty = document.getElementById("logEmpty");
+  const container = document.getElementById("logEntries");
+  empty.style.display = todayLog.length === 0 ? "" : "none";
+  container.innerHTML = todayLog.map((entry, idx) => `
+    <div class="card" style="margin-bottom:12px">
+      <div class="entry-source">"${escHtml(entry.input)}"</div>
+      <div class="entry-items">
+        ${entry.items.map(item => `
+          <div class="entry-item">
+            <div><span class="entry-item-name">${escHtml(item.name)}</span>${item.note ? `<span class="entry-item-note">${escHtml(item.note)}</span>` : ""}</div>
+            <span class="entry-item-cals">${item.calories} kcal</span>
+          </div>`).join("")}
+      </div>
+      <div class="entry-footer">
+        <span class="entry-msg">${escHtml(entry.message)}</span>
+        <span class="entry-total">${entry.total} kcal</span>
+      </div>
+    </div>`).join("");
+  document.getElementById("logBottom").scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+async function handleSubmit() {
+  const input = document.getElementById("foodInput");
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+  input.style.height = "";
+  document.getElementById("logBtn").disabled = true;
+  document.getElementById("loadingCard").style.display = "";
+  document.getElementById("errorCard").style.display = "none";
+
+  try {
+    const libNote = library.length > 0
+      ? `\n\nPersonal food library (always use these exact values):\n${library.map(f => `- "${f.name}": ${f.calories} kcal`).join("\n")}`
+      : "";
+    const system = `You are a calorie estimation assistant. The user describes food in plain English.${libNote}\n\nRespond ONLY with valid JSON (no markdown):\n{"items":[{"name":"Food","calories":300,"note":"optional"}],"total":300,"message":"One friendly sentence."}`;
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 800,
+        system,
+        messages: [{ role: "user", content: text }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content?.find(b => b.type === "text")?.text || "";
+    const parsed = JSON.parse(raw);
+    const entry = { ...parsed, input: text, id: Date.now() };
+    todayLog.push(entry);
+    save("cal-log:" + todayKey(), todayLog);
+    renderLog();
+    renderSummary();
+  } catch (e) {
+    document.getElementById("errorCard").textContent = "Couldn't estimate that — try describing it differently.";
+    document.getElementById("errorCard").style.display = "";
+  } finally {
+    document.getElementById("loadingCard").style.display = "none";
+  }
+}
+
+function clearToday() {
+  if (!confirm("Clear today's log?")) return;
+  todayLog = [];
+  save("cal-log:" + todayKey(), todayLog);
+  renderLog();
+  renderSummary();
+}
+
+function handleKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
+}
+
+function autoResize(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 100) + "px";
+}
+
+// ── History ──
+function renderHistory() {
+  const container = document.getElementById("historyContent");
+  const allKeys = getAllDayKeys();
+  const days = allKeys.map(date => {
+    const entries = load("cal-log:" + date) || [];
+    const total = entries.reduce((s, e) => s + e.total, 0);
+    return { date, total, entries };
+  }).filter(d => d.entries.length > 0);
+
+  if (days.length === 0) {
+    container.innerHTML = `<div class="empty">No history yet — start logging today!</div>`;
+    return;
+  }
+
+  const maxCals = Math.max(...days.map(d => d.total), GOAL);
+  const avg = Math.round(days.reduce((s, d) => s + d.total, 0) / days.length);
+  const daysUnder = days.filter(d => d.total <= GOAL).length;
+  const avgColor = avg <= GOAL ? "var(--green)" : "var(--yellow)";
+
+  const chartDays = [...days].reverse().slice(-30);
+  const chartBars = chartDays.map(d => {
+    const h = maxCals > 0 ? Math.max((d.total / maxCals) * 48, 3) : 3;
+    const c = d.total <= GOAL ? "var(--green)" : "var(--red)";
+    return `<div class="chart-bar" style="height:${h}px;background:${c};opacity:0.8" title="${formatDate(d.date)}: ${d.total} kcal"></div>`;
+  }).join("");
+
+  const summaryCard = days.length > 1 ? `
+    <div class="stats-card">
+      <div class="stats-label">Summary — last ${days.length} day${days.length !== 1 ? "s" : ""}</div>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-num" style="color:${avgColor}">${avg.toLocaleString()}</div><div class="stat-lbl">avg kcal/day</div></div>
+        <div class="stat"><div class="stat-num">${daysUnder}</div><div class="stat-lbl">days under goal</div></div>
+        <div class="stat"><div class="stat-num">${days.length - daysUnder}</div><div class="stat-lbl">days over goal</div></div>
+      </div>
+      <div class="chart">${chartBars}</div>
+      <div class="chart-axis"></div>
+      <div class="chart-labels"><span>older</span><span>today</span></div>
+    </div>` : "";
+
+  const dayRows = days.map(day => {
+    const w = maxCals > 0 ? Math.min((day.total / maxCals) * 100, 100) : 0;
+    const c = day.total <= GOAL ? "var(--green)" : "var(--red)";
+    const entriesHtml = day.entries.map(e => `
+      <div class="day-entry">
+        <div class="day-entry-src">"${escHtml(e.input)}"</div>
+        ${e.items.map(item => `<div class="day-entry-item"><span>${escHtml(item.name)}</span><span>${item.calories} kcal</span></div>`).join("")}
+      </div>`).join("");
+    return `
+      <details>
+        <summary>
+          <span class="day-name">${formatDate(day.date)}</span>
+          <div class="spark"><div class="spark-fill" style="width:${w}%;background:${c}"></div></div>
+          <span class="day-total" style="color:${c}">${day.total.toLocaleString()} kcal</span>
+        </summary>
+        <div class="day-entries">${entriesHtml}</div>
+      </details>`;
+  }).join("");
+
+  container.innerHTML = summaryCard + dayRows;
+}
+
+// ── Library ──
+function renderLibrary() {
+  const list = document.getElementById("libraryList");
+  const libTabEl = document.getElementById("libTab");
+  libTabEl.textContent = library.length > 0 ? `My Foods (${library.length})` : "My Foods";
+
+  if (library.length === 0) {
+    list.innerHTML = `<div class="empty">No foods saved yet</div>`;
+    return;
+  }
+  list.innerHTML = library.map(food => `
+    <div class="lib-item" style="margin-top:12px" id="lib-${food.id}">
+      <span class="lib-item-name">${escHtml(food.name)}</span>
+      <div class="lib-actions">
+        <span class="lib-item-cals">${food.calories} kcal</span>
+        <button class="btn-ghost btn" onclick="startEdit(${food.id})">Edit</button>
+        <button class="btn-danger btn" onclick="removeFood(${food.id})">×</button>
+      </div>
+    </div>`).join("");
+}
+
+function addToLibrary() {
+  const name = document.getElementById("libName").value.trim();
+  const cals = parseInt(document.getElementById("libCals").value);
+  if (!name || isNaN(cals) || cals < 0) return;
+  library.push({ id: Date.now(), name, calories: cals });
+  save("cal-library", library);
+  document.getElementById("libName").value = "";
+  document.getElementById("libCals").value = "";
+  document.getElementById("libAddBtn").disabled = true;
+  renderLibrary();
+}
+
+function removeFood(id) {
+  library = library.filter(f => f.id !== id);
+  save("cal-library", library);
+  renderLibrary();
+}
+
+function startEdit(id) {
+  const food = library.find(f => f.id === id);
+  if (!food) return;
+  const row = document.getElementById("lib-" + id);
+  row.querySelector(".lib-actions").innerHTML = `
+    <input class="input" id="edit-${id}" type="number" min="0" value="${food.calories}" style="width:70px" onkeydown="if(event.key==='Enter')saveEdit(${id})">
+    <button class="btn-save btn" onclick="saveEdit(${id})">Save</button>
+    <button class="btn-ghost btn" onclick="renderLibrary()">Cancel</button>`;
+  document.getElementById("edit-" + id).focus();
+}
+
+function saveEdit(id) {
+  const val = parseInt(document.getElementById("edit-" + id)?.value);
+  if (isNaN(val) || val < 0) return;
+  library = library.map(f => f.id === id ? { ...f, calories: val } : f);
+  save("cal-library", library);
+  renderLibrary();
+}
+
+// ── Tabs ──
+function switchTab(tab) {
+  currentView = tab;
+  ["log", "history", "library"].forEach(t => {
+    document.getElementById("panel-" + t).style.display = t === tab ? "flex" : "none";
+    document.querySelectorAll(".tab")[["log","history","library"].indexOf(t)].classList.toggle("active", t === tab);
+  });
+  document.getElementById("inputBar").style.display = tab === "log" ? "" : "none";
+  if (tab === "history") renderHistory();
+}
+
+// ── Utils ──
+function escHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+init();
+</script>
+</body>
+</html>
